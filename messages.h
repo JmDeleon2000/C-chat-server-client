@@ -9,6 +9,7 @@ class DirectMessage
     std::string text;
     public:
     void send();
+    DirectMessage();
 };
 
 class ChangeStatus {
@@ -17,6 +18,7 @@ class ChangeStatus {
     std::string status;
     public:
     void send();
+    ChangeStatus();
 };
 
 class UserRegistration {
@@ -25,6 +27,7 @@ class UserRegistration {
     std::string ip;
     public:
     void send();
+    UserRegistration();
 };
 
 class UserInformation {
@@ -34,6 +37,7 @@ class UserInformation {
     std::string status;
     public:
     void send();
+    UserInformation();
 };
 
 class UserRequest {
@@ -41,6 +45,7 @@ class UserRequest {
     std::string user;
     public:
     void send();
+    UserRequest();
 };
 
 class ConnectedUsers {
@@ -48,6 +53,7 @@ class ConnectedUsers {
     std::vector<UserInformation> users;
     public:
     void send();
+    ConnectedUsers();
 };
 
 class ClientRequest {
@@ -59,6 +65,7 @@ class ClientRequest {
     DirectMessage message;
     public:
     void send();
+    ClientRequest();
 };
 
 class ServerResponse {
@@ -72,4 +79,5 @@ class ServerResponse {
     ChangeStatus status;
     public:
     void send();
+    ServerResponse();
 };

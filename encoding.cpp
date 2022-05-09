@@ -25,7 +25,7 @@ void consume(int* index, msg_buffer* out, char* buffer, bool* set_mask)
         buffer += 1;
         num_size++;
         int i = 0, j = num_size;
-
+        
         
         if (set_mask[out_i])
             out->buffers[out_i] = new vector<int>();
@@ -69,7 +69,7 @@ msg_buffer* decode(encoded_msg* buffer)
 
     int main(int argn, char* argv)
     {
-        
+        argv[1];
         foo();
         return 0;
     }
