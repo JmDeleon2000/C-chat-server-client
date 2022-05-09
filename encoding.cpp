@@ -67,8 +67,9 @@ msg_buffer* decode(encoded_msg* buffer)
 
     void foo();
 
-    int main()
+    int main(int argn, char* argv)
     {
+        
         foo();
         return 0;
     }
