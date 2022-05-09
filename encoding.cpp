@@ -51,30 +51,3 @@ void consume(int* index, msg_buffer* out, char* buffer, bool* set_mask)
     }
 }
 
-
-msg_buffer* decode(encoded_msg* buffer)
-{
-    msg_buffer* out = new msg_buffer();
-    int i = 0;
-    bool buffer_create[10];
-    char* head = (char*)buffer->buffer;
-    while (i < buffer->size && head[0] != 0)
-    {
-        consume(&i, out, head, buffer_create);
-    }
-    //TODO identify msg_type
-}
-
-    void foo();
-
-    int main(int argn, char* argv)
-    {
-        argv[1];
-        foo();
-        return 0;
-    }
-
-    void foo()
-    {
-        return;
-    }

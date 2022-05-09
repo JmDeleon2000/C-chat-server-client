@@ -9,69 +9,102 @@ class DirectMessage
     std::string text;
     public:
     void send();
+    void encode(std::vector<char>*);
     DirectMessage();
+    DirectMessage(std::string reciever, std::string sender, std::string text);
 };
 
-class ChangeStatus {
+class ChangeStatus 
+{
     public:
     std::string username;
     std::string status;
     public:
     void send();
+    void encode(std::vector<char>*);
     ChangeStatus();
+    ChangeStatus(std::string username, std::string status);
 };
 
-class UserRegistration {
+class UserRegistration 
+{
     public:
     std::string username;
     std::string ip;
     public:
     void send();
+    void encode(std::vector<char>*);
     UserRegistration();
+    UserRegistration(std::string username, std::string ip);
 };
 
-class UserInformation {
+class UserInformation 
+{
     public:
     std::string username;
     std::string ip;
     std::string status;
     public:
     void send();
+    void encode(std::vector<char>*);
     UserInformation();
+    UserInformation(std::string username, std::string ip, std::string status);
 };
 
-class UserRequest {
+class UserRequest 
+{
     public:
     std::string user;
     public:
     void send();
+    void encode(std::vector<char>*);
     UserRequest();
+    UserRequest(std::string user);
 };
 
-class ConnectedUsers {
+class ConnectedUsers 
+{
     public:
     std::vector<UserInformation> users;
     public:
     void send();
+    void encode(std::vector<char>*);
     ConnectedUsers();
 };
 
-class ClientRequest {
+enum Option 
+{
+USER_LOGIN = 0,
+CONNECTED_USERS = 1,
+USER_INFORMATION = 2,
+STATUS_CHANGE = 3,
+SEND_MESSAGE = 4
+};
+
+enum Code
+{
+FAILED_OPERATION = 0,
+SUCCESSFUL_OPERATION = 1
+};
+
+class ClientRequest 
+{
     public:
-    int option;
+    short int option;
     UserRegistration newuser;
     UserRequest user;
     ChangeStatus status;
     DirectMessage message;
     public:
     void send();
+    void encode(std::vector<char>*);
     ClientRequest();
 };
 
 class ServerResponse {
     public:
-    int option;
-    int code = 2;
+    short int option;
+    short int code;
     std::string response;
     ConnectedUsers users;
     UserInformation user;
@@ -79,5 +112,6 @@ class ServerResponse {
     ChangeStatus status;
     public:
     void send();
+    void encode(std::vector<char>*);
     ServerResponse();
 };
