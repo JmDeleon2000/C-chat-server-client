@@ -1,3 +1,6 @@
+#include <vector>
+
+
 enum Option {
 USER_LOGIN = 0,
 CONNECTED_USERS = 1,
@@ -28,7 +31,7 @@ enum MSG_TYPE
 struct msg_buffer
 {
     int type = -1;
-    char* buffers[10];
+    void* buffers[10];
 };
 
 struct encoded_msg
