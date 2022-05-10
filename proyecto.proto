@@ -1,0 +1,79 @@
+syntax="proto2";
+package chat;
+
+
+message UserRegistration {
+optional string username = 1;
+optional string ip = 2;
+}
+
+
+message ChangeStatus {
+optional string username = 1;
+optional string status = 2;
+}
+
+
+message Message {
+optional string receiver = 1;
+optional string sender = 2;
+optional string text = 3;
+}
+
+
+message UserInformation {
+optional string username = 1;
+optional string ip = 2;
+optional string status = 3;
+}
+
+
+message UserRequest {
+optional string user = 1;
+}
+
+
+message ConnectedUsers {
+repeated UserInformation users = 1;
+}
+
+
+message ClientRequest {
+enum Option
+{
+USER_LOGIN = 0;
+CONNECTED_USERS = 1;
+USER_INFORMATION = 2;
+STATUS_CHANGE = 3;
+SEND_MESSAGE = 4;
+}
+optional Option option = 1;
+optional UserRegistration newuser = 2;
+optional UserRequest user = 3;
+optional ChangeStatus status = 4;
+optional Message message = 5;
+}
+
+
+message ServerResponse {
+enum Option
+{
+USER_LOGIN = 0;
+CONNECTED_USERS = 1;
+USER_INFORMATION = 2;
+STATUS_CHANGE = 3;
+SEND_MESSAGE = 4;
+}
+optional Option option = 1;
+enum Code
+{
+FAILED_OPERATION = 0;
+SUCCESSFUL_OPERATION = 1;
+}
+optional Code code = 2;
+optional string response = 3;
+optional ConnectedUsers users = 4;
+optional UserInformation user = 5;
+optional Message message = 6;
+optional ChangeStatus status = 7;
+}
