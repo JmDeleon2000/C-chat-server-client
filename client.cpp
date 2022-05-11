@@ -38,20 +38,48 @@ int main()
 
 
     string input;
+    string username;
+
     if(pthread_create(&sender_thread, NULL, client_sender, (void*)NULL) == -1)
         return -1;
     if(pthread_create(&receiver_thread, NULL, client_receiver, (void*)NULL) == -1)
         return -1;
     
+    cout << "Enter username: ";
+    cin >> username;
     while (not_out)
     {
+        
         cin >> input;
-        if (input == "q" || input == "Q")
+        if (input == "--q" || input == "--Q")
             not_out = false;
+        
         if (not_out && input.size() > 0)
             {
-                msg->set_sender(input);
+                if (input == "--h" || input == "--H"){
+                    cout << "Quit: --q or --Q" << endl;
+                    cout << "DM: DM <usuario> message" << endl;
+                    cout << "Users: --u or --U" << endl;
+                    cout << "Info: --i <user> or --I <user>" << endl;
+                    cout << "Status change: --s <status> or --S <status>" << endl;
+                }
+
+                if (input == "--u" || input == "--U"){
+                    req->set_option(ClientRequest_Option_GET_USERS);
+                }
+                if (input.substr(0,3) == "--i" || input.substr(0,3) == "--I"){
+                    req->set_option(ClientRequest_Option_GET_INFO);
+                }
+                if (input.substr(0,3) == "--s" || input.substr(0,3) == "--S"){
+                    req->set_option(ClientRequest_Option_SET_STATUS);
+                }
+                if (input.substr(0,2) == "DM"){
+                    req->set_option(ClientRequest_Option_SEND_MESSAGE);
+                }
+
+                //msg->set_sender(input);
                 input.clear();
+                
                 send_buffer.push_back(req->SerializeAsString());
             }
     }
