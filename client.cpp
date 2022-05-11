@@ -27,6 +27,7 @@ int main()
 
     chat::ClientRequest* req = new chat::ClientRequest();
     chat::Message* msg = new chat::Message();
+    chat::ChangeStatus* change = new chat::ChangeStatus();
     msg->set_sender("sender test");
     msg->set_receiver("reciever test");
     msg->set_text("test text: lorem ipsum");
@@ -67,19 +68,16 @@ int main()
                 if (input == "--u" || input == "--U"){
                     cout << "*** GETTING USERS INFORMATION ***" << endl;
                     
-                    req->set_option(ClientRequest_Option_GET_USERS);
-                    send_buffer.push_back(req)
                 }
                 if (input.substr(0,2) == "--i" || input.substr(0,3) == "--I"){
                     cout << "*** GETTING "<<input.substr(input.find('') + 1)<<" INFORMATION ***" << endl;
-                    req->set_option(ClientRequest_Option_GET_INFO);
+                   
                 }
                 if (input.substr(0,2) == "--s" || input.substr(0,3) == "--S"){
                     cout << "*** CHANGING STATUS TO "<<input.substr(input.find('') + 1)<<" ***" << endl;
-                    msg->set_sender(username);
-                    
+                    change->set_status(input.substr(input.find('') + 1));
                     req->set_option(ClientRequest_Option_SET_STATUS);
-
+                    req->set_allocated_change(change);
                     cout << "STATUS CHANGE DONE SUCCESSFULLY" << endl;
                 }
                 if (input.substr(0,1) == "DM"){
