@@ -82,9 +82,11 @@ int main(int argn, char** argv)
     req->set_allocated_message(msg);
     req->set_allocated_user(userInfoReq);
     req->set_allocated_status(change);
+#if debug
     send_buffer.push_back(req->DebugString());
-
-
+#else
+    send_buffer.push_back(req->SerializeAsString());
+#endif
 
 
     string input;
@@ -162,7 +164,11 @@ int main(int argn, char** argv)
             if (valid_op)
             {
                 pthread_mutex_lock(&send_queue_mutex);
+#if debug
                 send_buffer.push_back(req->DebugString());
+#else
+                send_buffer.push_back(req->SerializeAsString());
+#endif
                 pthread_mutex_unlock(&send_queue_mutex);
             }
             else 
@@ -223,62 +229,76 @@ void* client_receiver(void* args)
         
         if (n > 0)
         {
-            if (response->ParseFromString(response_buffer))
-            {
-#if debug
-                cout << response->DebugString() << "\n";
-#else
-                if (response->code() == ServerResponse_Code_FAILED_OPERATION)
-                {
-                    cerr << "Operation: ";
-                    switch (response->option())
-                    {
-                    case ServerResponse_Option_CONNECTED_USERS:
-                        cerr << "Get connected users info";
-                        break;
-                    case ServerResponse_Option_USER_LOGIN:
-                        cerr << "User Login";
-                        break;
-                    case ServerResponse_Option_USER_INFORMATION:
-                        cerr << "Get user information";
-                        break;
-                    case ServerResponse_Option_STATUS_CHANGE:
-                        cerr << "User status change";
-                        break;
-                    case ServerResponse_Option_SEND_MESSAGE:
-                        cerr << "Send message";
-                        break;
-                    default:
-                        break;
-                    }
-                    cerr << " failed!\n";
-                }
-                else
-                    switch (response->option())
-                    {
-                    case ServerResponse_Option_CONNECTED_USERS:
-                        //TODO try not to be lazy
-                        cout << response->users().DebugString() << "\n";
-                        break;
-                    case ServerResponse_Option_USER_LOGIN:
-                        cout << "User Login succesful\n";
-                        break;
-                    case ServerResponse_Option_USER_INFORMATION:
-                        cout << response->user().DebugString();
-                        break;
-                    case ServerResponse_Option_STATUS_CHANGE:
-                        cout << "User status change succesful\n";
-                        break;
-                    case ServerResponse_Option_SEND_MESSAGE:
-                        cout << "Message sent";
-                        break;
-                    default:
-                        break;
-                    }
-#endif
-                response_buffer.clear();
-            }
+            cout << "server disconnected" << endl;
+            not_out = false;
         }
+        if (response->ParseFromString(response_buffer))
+        {
+#if debug
+            cout << response->DebugString() << "\n";
+#else
+            if (response->code() == ServerResponse_Code_FAILED_OPERATION)
+            {
+                cerr << "Operation: ";
+                switch (response->option())
+                {
+                case ServerResponse_Option_CONNECTED_USERS:
+                    cerr << "Get connected users info";
+                    break;
+                case ServerResponse_Option_USER_LOGIN:
+                    cerr << "User Login";
+                    break;
+                case ServerResponse_Option_USER_INFORMATION:
+                    cerr << "Get user information";
+                    break;
+                case ServerResponse_Option_STATUS_CHANGE:
+                    cerr << "User status change";
+                    break;
+                case ServerResponse_Option_SEND_MESSAGE:
+                    cerr << "Send message";
+                    break;
+                default:
+                    break;
+                }
+                cerr << " failed!\n";
+            }
+            else
+                switch (response->option())
+                {
+                case ServerResponse_Option_CONNECTED_USERS:
+                    //TODO try not to be lazy
+                    cout << response->users().DebugString() << "\n";
+                    break;
+                case ServerResponse_Option_USER_LOGIN:
+                    cout << "User Login succesful\n";
+                    break;
+                case ServerResponse_Option_USER_INFORMATION:
+                    if (response->has_user())
+                        cout << response->user().DebugString();
+                    break;
+                case ServerResponse_Option_STATUS_CHANGE:
+                    cout << "User status change succesful\n";
+                    break;
+                case ServerResponse_Option_SEND_MESSAGE:
+                    cout << "Message sent";
+                    if (response->has_message() && response->message().has_sender() && response->message().has_text())
+                    {  
+                        cout << "Message from: " << response->message().has_sender() << ":\n";
+                        cout << response->message().text() << "\n";
+                    }
+                    if (response->has_message() && response->message().has_text())
+                    {  
+                        cout << "Message :\n";
+                        cout << response->message().text() << "\n";
+                    }
+                    break;
+                default:
+                    break;
+                }
+#endif
+            response_buffer.clear();
+        }
+        
         sleep(1);
     }
     
