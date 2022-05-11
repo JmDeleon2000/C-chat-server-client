@@ -13,14 +13,19 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <time.h>
 
 using namespace std;
 using namespace chat;
 
-
+const clock_t timeout = 90;
 
 vector<int> socket_list;
 vector<chat::UserInformation> user_reg;
+vector<clock_t> last_user_valid_request;
+vector<bool> has_timedout;
+pthread_mutex_t global_mutex;
+bool check_for_timeout = true;
 
 
 
@@ -42,15 +47,6 @@ bool user_registration(string username, string IP) {
 }
 
 
-
-    // crear su sesión en el servidor y manejarla de forma concurrente a las demás sesiones y a la recepción de nuevas conexiones (ergo, multithreading)
-
-
-// chat::ServerResponse* servRes = new chat::ServerResponse();
-// chat::UserRegistration* userReg = new chat::UserRegistration();
-// chat::UserInformation* userInfo = new chat::UserInformation();
-// chat::Message* msg = new chat::Message();
-// chat::ConnectedUsers* conUser = new chat::ConnectedUsers();
 
 // código extraído de: https://www.tutorialspoint.com/how-to-get-the-ip-address-of-local-computer-using-c-cplusplus
 
@@ -77,6 +73,8 @@ void IP_formatter(char *IPbuffer) {
       exit(1);
    }
 }
+
+void* timeout_manager(void*);
 
 void* user_session(void*);
 struct thread_args
@@ -125,14 +123,21 @@ int main(int argn, char** argv)
     bind(listener, (struct sockaddr*)&serv_addr, sizeof(serv_addr)); 
     listen(listener, 10); 
 
+    pthread_t timeout_manager_thread;
+    if(pthread_create(&timeout_manager_thread, NULL, timeout_manager, (void*)NULL) == -1)
+            return -1;
     pthread_t sessions[20];
     int session_count = 0;
     thread_args arguments;
     while (true)
     {
         cout << "waiting for client...\n";
-        socket_list.push_back(accept(listener, (struct sockaddr*)NULL, NULL));
-
+        int fd = accept(listener, (struct sockaddr*)NULL, NULL);
+        pthread_mutex_lock(&global_mutex);
+        socket_list.push_back(fd);
+        last_user_valid_request.push_back(0);
+        has_timedout.push_back(false);
+        pthread_mutex_unlock(&global_mutex);
         arguments.socket_id = session_count;
         if(pthread_create(&sessions[session_count], NULL, user_session, (void*)&arguments) == -1)
             return -1;
@@ -142,6 +147,8 @@ int main(int argn, char** argv)
     
     for (int i = 0; i < session_count; i++)
         pthread_join(sessions[i], NULL);
+    check_for_timeout = false;
+    pthread_join(timeout_manager_thread, NULL);
 
     return 0;
 }
@@ -205,13 +212,23 @@ void* user_session(void* args)
         if (read_size == 0)
             {
                 cout << "Client: " << user_reg[my_socket].username() << " disconnected\n";
+                pthread_mutex_lock(&global_mutex);
                 user_reg[my_socket].set_status("INACTIVE");
+                pthread_mutex_unlock(&global_mutex);
                 exit(1);
             }
         
-        receive_buffer = buffer;
+        receive_buffer += buffer;
         if (request->ParseFromString(receive_buffer))
         {
+            pthread_mutex_lock(&global_mutex);
+            last_user_valid_request[my_socket] = clock();
+            if (has_timedout[my_socket])
+                {
+                    user_reg[my_socket].set_status("INACTIVE");
+                    exit(1);
+                }
+            pthread_mutex_unlock(&global_mutex);
             bool succesful = false;
             switch (request->option())
             {
@@ -255,7 +272,9 @@ void* user_session(void* args)
                 for (int i = 0; i < user_reg.size(); i++)
                     if(user_reg[i].username() == request->status().username())
                         {
+                            pthread_mutex_lock(&global_mutex);
                             user_reg[i].set_status(request->status().status());
+                            pthread_mutex_unlock(&global_mutex);
                             succesful = true;
                         }
                 if (succesful)
@@ -283,12 +302,27 @@ void* user_session(void* args)
             default:
                 break;
             }
+            receive_buffer.clear();
         }
-
-        // ver si el el username está activo
-        // TODO verificar el timeout del usuario. Si se pasa, ponerlo inactivo
-
         
     }
     
+}
+
+
+void* timeout_manager(void*)
+{
+    clock_t now;
+    while (check_for_timeout)
+    {
+        now = clock();
+        pthread_mutex_lock(&global_mutex);
+        for(int i = 0; i < last_user_valid_request.size(); i++)
+            if (last_user_valid_request[i] != 0 && (now - last_user_valid_request[i])/CLOCKS_PER_SEC >= timeout)
+                {
+                    has_timedout[i] = true;
+                }
+        pthread_mutex_unlock(&global_mutex);
+        sleep(5);
+    }
 }

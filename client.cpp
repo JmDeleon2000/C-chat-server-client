@@ -21,6 +21,32 @@ int socketfd;
 void* client_sender(void* args);
 void* client_receiver(void* args);
 
+// código extraído de: https://www.tutorialspoint.com/how-to-get-the-ip-address-of-local-computer-using-c-cplusplus
+
+// nombre del usuario 
+void check_host_name(int hostname) { 
+   if (hostname == -1) {
+      perror("gethostname");
+      exit(1);
+   }
+}
+
+//información del host
+void check_host_entry(struct hostent * hostentry) { 
+   if (hostentry == NULL){
+      perror("gethostbyname");
+      exit(1);
+   }
+}
+
+//lo convierte al formato de un IP
+void IP_formatter(char *IPbuffer) { 
+   if (NULL == IPbuffer) {
+      perror("inet_ntoa");
+      exit(1);
+   }
+}
+
 int main(int argn, char** argv)
 {
     if (argn != 4)
@@ -42,6 +68,24 @@ int main(int argn, char** argv)
 #if debug
 
 #else
+    // para obtener el IP address
+    char host[256];
+    char *IP;
+    struct hostent *host_entry;
+
+
+    int hostname;
+    hostname = gethostname(host, sizeof(host)); 
+    check_host_name(hostname);
+
+
+    host_entry = gethostbyname(host); 
+    check_host_entry(host_entry);
+
+    IP = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0])); //lo convierte al formato de un IP
+
+    printf("Host IP: %s\n", IP);
+
     struct sockaddr_in serv_addr; 
     
     if((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
