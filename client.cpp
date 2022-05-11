@@ -2,13 +2,21 @@
 #include <unistd.h>
 #include <iostream>
 #include "proyecto.pb.h"
-//#include<sys/socket.h> 
-//#include<arpa/inet.h>
+#include<sys/socket.h> 
+#include<arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <stdio.h>
+
+#define debug 0
 
 using namespace std;
 using namespace chat;
 bool not_out = true;
+pthread_mutex_t send_queue_mutex;
 vector<string> send_buffer;
+int socketfd;
 
 void* client_sender(void* args);
 void* client_receiver(void* args);
@@ -25,13 +33,41 @@ int main(int argn, char** argv)
     string serverIP = argv[2];
     string serverPort = argv[3];
 
-    //int socket_desc;
-	//socket_desc = socket(AF_INET , SOCK_STREAM , 0);
-	//
-	//if (socket_desc == -1)
-	//{
-	//	printf("Could not create socket");
-	//}
+    pthread_t sender_thread, receiver_thread;
+    if(pthread_create(&sender_thread, NULL, client_sender, (void*)NULL) == -1)
+        return -1;
+    if(pthread_create(&receiver_thread, NULL, client_receiver, (void*)NULL) == -1)
+        return -1;
+
+#if debug
+
+#else
+    struct sockaddr_in serv_addr; 
+    
+    if((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        cout << "Socket creation failed!\n";
+        return -1;
+    } 
+    memset(&serv_addr, '0', sizeof(serv_addr)); 
+    serv_addr.sin_family = AF_INET;
+    int port;
+    sscanf(serverPort.c_str(), "%d", &port);
+    serv_addr.sin_port = htons(port); 
+
+    if(inet_pton(AF_INET, argv[2], &serv_addr.sin_addr)<=0)
+    {
+        cout << "inet_pton error occured\n";
+        return 1;
+    } 
+
+    if( connect(socketfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+        cout << "\n Error : Connect Failed \n";
+        return 1;
+    } 
+#endif
+
 
     chat::ClientRequest* req = new chat::ClientRequest();
     chat::Message* msg = new chat::Message();
@@ -56,11 +92,7 @@ int main(int argn, char** argv)
     string second_arg;
     string third_arg;
 
-    pthread_t sender_thread, receiver_thread;
-    if(pthread_create(&sender_thread, NULL, client_sender, (void*)NULL) == -1)
-        return -1;
-    if(pthread_create(&receiver_thread, NULL, client_receiver, (void*)NULL) == -1)
-        return -1;
+
     
     while (not_out)
     {
@@ -128,7 +160,11 @@ int main(int argn, char** argv)
             second_arg.clear();
             third_arg.clear();
             if (valid_op)
+            {
+                pthread_mutex_lock(&send_queue_mutex);
                 send_buffer.push_back(req->DebugString());
+                pthread_mutex_unlock(&send_queue_mutex);
+            }
             else 
                 cout << "Invalid operation\nUse --h for help\n";
         }
@@ -148,8 +184,14 @@ void* client_sender(void* args)
     {
         if (send_buffer.size() > 0)
         {
+#if debug
             cout << send_buffer[0] << endl;
+#else
+            send(socketfd, send_buffer[0].c_str(), send_buffer[0].size(), 0);
+#endif
+            pthread_mutex_lock(&send_queue_mutex);
             send_buffer.erase(send_buffer.begin());
+            pthread_mutex_unlock(&send_queue_mutex);
         }
         sleep(1);
     }
@@ -158,7 +200,6 @@ void* client_sender(void* args)
 
 void* client_receiver(void* args)
 {
-    bool keep_reading = false;
     int n = 0;
     chat::ServerResponse* response = new chat::ServerResponse();
     chat::Message* msg = new chat::Message();
@@ -175,26 +216,69 @@ void* client_receiver(void* args)
 
     while (not_out)
     {
-        //use recv or read
-        if (n > 0)
-            keep_reading = true;
-        while (keep_reading)
-        {
-            for(int i = 0; i < n; i++)
-                response_buffer += read_buffer[i];
-            
-            if (n == 0)
-            {
-                keep_reading = false;
-                if (response->ParseFromString(response_buffer))
-                {
-                    cout << response->DebugString() << "\n";
-                    response_buffer.clear();
-                }
-            }
-            //use recv or read
-        }
+        n = recv(socketfd, read_buffer, sizeof(read_buffer), 0);
+
+        for(int i = 0; i < n; i++)
+            response_buffer += read_buffer[i];
         
+        if (n > 0)
+        {
+            if (response->ParseFromString(response_buffer))
+            {
+#if debug
+                cout << response->DebugString() << "\n";
+#else
+                if (response->code() == ServerResponse_Code_FAILED_OPERATION)
+                {
+                    cout << "Operation: ";
+                    switch (response->option())
+                    {
+                    case ServerResponse_Option_CONNECTED_USERS:
+                        cout << "Get connected users info";
+                        break;
+                    case ServerResponse_Option_USER_LOGIN:
+                        cout << "User Login";
+                        break;
+                    case ServerResponse_Option_USER_INFORMATION:
+                        cout << "Get user information";
+                        break;
+                    case ServerResponse_Option_STATUS_CHANGE:
+                        cout << "User status change";
+                        break;
+                    case ServerResponse_Option_SEND_MESSAGE:
+                        cout << "Send message";
+                        break;
+                    default:
+                        break;
+                    }
+                    cout << " failed!\n";
+                }
+                else
+                    switch (response->option())
+                    {
+                    case ServerResponse_Option_CONNECTED_USERS:
+                        //TODO try not to be lazy
+                        cout << response->users().DebugString() << "\n";
+                        break;
+                    case ServerResponse_Option_USER_LOGIN:
+                        cout << "User Login succesful\n";
+                        break;
+                    case ServerResponse_Option_USER_INFORMATION:
+                        cout << response->user().DebugString();
+                        break;
+                    case ServerResponse_Option_STATUS_CHANGE:
+                        cout << "User status change succesful\n";
+                        break;
+                    case ServerResponse_Option_SEND_MESSAGE:
+                        cout << "Message sent";
+                        break;
+                    default:
+                        break;
+                    }
+#endif
+                response_buffer.clear();
+            }
+        }
         sleep(1);
     }
     
