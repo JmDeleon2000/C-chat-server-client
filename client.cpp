@@ -67,7 +67,9 @@ int main()
 
                 if (input == "--u" || input == "--U"){
                     cout << "*** GETTING USERS INFORMATION ***" << endl;
-                    
+                    msg->set_sender(username);
+                    req->set_option(ClientRequest_Option_GET_USERS);
+                    req->set_allocated_message(msg);
                 }
                 if (input.substr(0,2) == "--i" || input.substr(0,3) == "--I"){
                     cout << "*** GETTING "<<input.substr(input.find('') + 1)<<" INFORMATION ***" << endl;
