@@ -65,16 +65,46 @@ int main()
                 }
 
                 if (input == "--u" || input == "--U"){
+                    cout << "*** GETTING USERS INFORMATION ***" << endl;
+                    
                     req->set_option(ClientRequest_Option_GET_USERS);
+                    send_buffer.push_back(req)
                 }
-                if (input.substr(0,3) == "--i" || input.substr(0,3) == "--I"){
+                if (input.substr(0,2) == "--i" || input.substr(0,3) == "--I"){
+                    cout << "*** GETTING "<<input.substr(input.find('') + 1)<<" INFORMATION ***" << endl;
                     req->set_option(ClientRequest_Option_GET_INFO);
                 }
-                if (input.substr(0,3) == "--s" || input.substr(0,3) == "--S"){
+                if (input.substr(0,2) == "--s" || input.substr(0,3) == "--S"){
+                    cout << "*** CHANGING STATUS TO "<<input.substr(input.find('') + 1)<<" ***" << endl;
+                    msg->set_sender(username);
+                    
                     req->set_option(ClientRequest_Option_SET_STATUS);
+
+                    cout << "STATUS CHANGE DONE SUCCESSFULLY" << endl;
                 }
-                if (input.substr(0,2) == "DM"){
+                if (input.substr(0,1) == "DM"){
+                    cout << "*** SENDING PRIVATE MESSAGE TO "<<input.substr(input.find('') + 1)<<" ***" << endl;
+                    msg->set_sender(username);
+                    msg->set_receiver(input.substr(input.find('') + 1));
+                    size_t pos = input.find(" ");
+                    if (pos == std::string::npos)
+                        return -1;
+                    
+                    pos = input.find(" ", pos + 1);
+                    if (pos == std::string::npos)
+                        return -1;
+                    
+                    msg->set_text(input.substr(pos, std::string::npos));
                     req->set_option(ClientRequest_Option_SEND_MESSAGE);
+                    req->set_allocated_message(msg);
+                }
+
+                else{
+                    msg->set_sender(username);
+                    msg->set_receiver("all");
+                    msg->set_text(input);
+                    req->set_option(ClientRequest_Option_SEND_MESSAGE);
+                    req->set_allocated_message(msg);
                 }
 
                 //msg->set_sender(input);
