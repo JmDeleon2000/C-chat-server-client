@@ -13,9 +13,17 @@ vector<string> send_buffer;
 void* client_sender(void* args);
 void* client_receiver(void* args);
 
-int main()
+int main(int argn, char** argv)
 {
-    pthread_t sender_thread, receiver_thread;
+    if (argn != 4)
+        {
+            cerr << "Expected ./client <username> <server ip> <server port>\n";
+            return -1;
+        }
+
+    string username = argv[1];
+    string serverIP = argv[2];
+    string serverPort = argv[3];
 
     //int socket_desc;
 	//socket_desc = socket(AF_INET , SOCK_STREAM , 0);
@@ -28,94 +36,104 @@ int main()
     chat::ClientRequest* req = new chat::ClientRequest();
     chat::Message* msg = new chat::Message();
     chat::ChangeStatus* change = new chat::ChangeStatus();
-    msg->set_sender("sender test");
-    msg->set_receiver("reciever test");
-    msg->set_text("test text: lorem ipsum");
-    req->set_option(ClientRequest_Option_SEND_MESSAGE);
+    chat::UserRequest* userInfoReq = new chat::UserRequest();
+    chat::UserRegistration* reg = new chat::UserRegistration();
+    msg->set_sender(username);
+    reg->set_username(username);
+    reg->set_ip("dummy ip"); //TODO get my ip
+    req->set_option(ClientRequest_Option_USER_LOGIN);
+    req->set_allocated_newuser(reg);
     req->set_allocated_message(msg);
-    //send_buffer.push_back(req->SerializeAsString());
-    //send_buffer.push_back(req->SerializeAsString());
-    //send_buffer.push_back(req->SerializeAsString());
+    req->set_allocated_user(userInfoReq);
+    req->set_allocated_status(change);
+    send_buffer.push_back(req->DebugString());
+
+
 
 
     string input;
-    string username;
+    string command;
+    string second_arg;
+    string third_arg;
 
+    pthread_t sender_thread, receiver_thread;
     if(pthread_create(&sender_thread, NULL, client_sender, (void*)NULL) == -1)
         return -1;
     if(pthread_create(&receiver_thread, NULL, client_receiver, (void*)NULL) == -1)
         return -1;
     
-    cout << "Enter username: ";
-    cin >> username;
     while (not_out)
     {
         
-        cin >> input;
-        if (input == "--q" || input == "--Q")
+        getline(cin, input);
+        command = input.substr(0, 3);
+        input.erase(0, 4);
+        second_arg = input.substr(0, input.find(' '));
+        third_arg = input;
+        third_arg.erase(0, third_arg.find(' ')+1);
+
+
+        if (command == "--q" || command == "--Q")
             not_out = false;
         
         if (not_out && input.size() > 0)
+        {
+            bool valid_op = false;
+            if (command == "--h" || command == "--H")
             {
-                if (input == "--h" || input == "--H"){
-                    cout << "Quit: --q or --Q" << endl;
-                    cout << "DM: DM <usuario> message" << endl;
-                    cout << "Users: --u or --U" << endl;
-                    cout << "Info: --i <user> or --I <user>" << endl;
-                    cout << "Status change: --s <status> or --S <status>" << endl;
-                }
-
-                if (input == "--u" || input == "--U"){
-                    cout << "*** GETTING USERS INFORMATION ***" << endl;
-                    msg->set_sender(username);
-                    req->set_option(ClientRequest_Option_GET_USERS);
-                    req->set_allocated_message(msg);
-                }
-                if (input.substr(0,2) == "--i" || input.substr(0,3) == "--I"){
-                    cout << "*** GETTING "<<input.substr(input.find('') + 1)<<" INFORMATION ***" << endl;
-                    msg->set_sender(username);
-                    msg->set_receiver(input.substr(input.find('') + 1));
-                    req->set_option(ClientRequest_Option_GET_USER_INFO);
-                    req->set_allocated_message(msg);
-                }
-                if (input.substr(0,2) == "--s" || input.substr(0,3) == "--S"){
-                    cout << "*** CHANGING STATUS TO "<<input.substr(input.find('') + 1)<<" ***" << endl;
-                    change->set_status(input.substr(input.find('') + 1));
-                    req->set_option(ClientRequest_Option_SET_STATUS);
-                    req->set_allocated_change(change);
-                    cout << "STATUS CHANGE DONE SUCCESSFULLY" << endl;
-                }
-                if (input.substr(0,1) == "DM"){
-                    cout << "*** SENDING PRIVATE MESSAGE TO "<<input.substr(input.find('') + 1)<<" ***" << endl;
-                    msg->set_sender(username);
-                    msg->set_receiver(input.substr(input.find('') + 1));
-                    size_t pos = input.find(" ");
-                    if (pos == std::string::npos)
-                        return -1;
-                    
-                    pos = input.find(" ", pos + 1);
-                    if (pos == std::string::npos)
-                        return -1;
-                    
-                    msg->set_text(input.substr(pos, std::string::npos));
-                    req->set_option(ClientRequest_Option_SEND_MESSAGE);
-                    req->set_allocated_message(msg);
-                }
-
-                else{
-                    msg->set_sender(username);
-                    msg->set_receiver("all");
-                    msg->set_text(input);
-                    req->set_option(ClientRequest_Option_SEND_MESSAGE);
-                    req->set_allocated_message(msg);
-                }
-
-                //msg->set_sender(input);
-                input.clear();
-                
-                send_buffer.push_back(req->SerializeAsString());
+                valid_op = true;
+                cout << "Quit: --q or --Q\n";
+                cout << "Direct Message: --M <user> <message> or --m <user> <message>\n";
+                cout << "Broadcast: --b <message>\n";
+                cout << "See connected users: --u or --U\n";
+                cout << "Info: --i <user> or --I <user>\n";
+                cout << "Status change: --s <status> or --S <status>\n";
+            } 
+            if (command == "--u" || command == "--U")
+            {
+                valid_op = true;
+                cout << "*** GETTING USERS INFORMATION ***\n";
+                req->set_option(ClientRequest_Option_CONNECTED_USERS);
+            } 
+            if (command == "--i" || command == "--I")
+            {
+                valid_op = true;
+                cout << "*** GETTING " << second_arg << " INFORMATION ***\n";
+                userInfoReq->set_user(second_arg);
+                req->set_option(ClientRequest_Option_USER_INFORMATION);
+            } 
+            if (command == "--s" || command == "--S")
+            {
+                valid_op = true;
+                cout << "*** CHANGING STATUS TO " << second_arg <<" ***\n";
+                change->set_status(second_arg);
+                req->set_option(ClientRequest_Option_STATUS_CHANGE);
             }
+            if (command == "--m" || command == "--M")
+            {
+                valid_op = true;
+                cout << "*** SENDING PRIVATE MESSAGE TO " << second_arg <<" ***\n";
+                msg->set_receiver(second_arg);
+                msg->set_text(third_arg);
+                req->set_option(ClientRequest_Option_SEND_MESSAGE);
+            }
+            if (command == "--b" || command == "--B")
+            {
+                valid_op = true;
+                msg->set_receiver("all");
+                msg->set_text(input);
+                req->set_option(ClientRequest_Option_SEND_MESSAGE);
+            }
+            input.clear();
+            second_arg.clear();
+            third_arg.clear();
+            if (valid_op)
+                send_buffer.push_back(req->DebugString());
+            else 
+                cout << "Invalid operation\nUse --h for help\n";
+        }
     }
+    
     
     pthread_join(sender_thread, NULL);
     pthread_join(receiver_thread, NULL);
@@ -152,8 +170,7 @@ void* client_receiver(void* args)
     
     string response_buffer = "";
 
-    char read_buffer[256];
-    n = test_buffer->size();
+    char read_buffer[1024];
 
 
     while (not_out)
@@ -171,7 +188,7 @@ void* client_receiver(void* args)
                 keep_reading = false;
                 if (response->ParseFromString(response_buffer))
                 {
-                    cout << response->DebugString() << endl;
+                    cout << response->DebugString() << "\n";
                     response_buffer.clear();
                 }
             }
