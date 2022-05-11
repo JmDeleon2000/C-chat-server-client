@@ -73,7 +73,10 @@ int main()
                 }
                 if (input.substr(0,2) == "--i" || input.substr(0,3) == "--I"){
                     cout << "*** GETTING "<<input.substr(input.find('') + 1)<<" INFORMATION ***" << endl;
-                   
+                    msg->set_sender(username);
+                    msg->set_receiver(input.substr(input.find('') + 1));
+                    req->set_option(ClientRequest_Option_GET_USER_INFO);
+                    req->set_allocated_message(msg);
                 }
                 if (input.substr(0,2) == "--s" || input.substr(0,3) == "--S"){
                     cout << "*** CHANGING STATUS TO "<<input.substr(input.find('') + 1)<<" ***" << endl;
