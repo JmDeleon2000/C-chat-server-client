@@ -268,19 +268,19 @@ void protobuf_AddDesc_proyecto_2eproto() {
     "er\030\003 \001(\0132\021.chat.UserRequest\022\"\n\006status\030\004 "
     "\001(\0132\022.chat.ChangeStatus\022\036\n\007message\030\005 \001(\013"
     "2\r.chat.Message\"h\n\006Option\022\016\n\nUSER_LOGIN\020"
-    "\000\022\023\n\017CONNECTED_USERS\020\001\022\024\n\020USER_INFORMATI"
-    "ON\020\002\022\021\n\rSTATUS_CHANGE\020\003\022\020\n\014SEND_MESSAGE\020"
-    "\004\"\250\003\n\016ServerResponse\022+\n\006option\030\001 \001(\0162\033.c"
+    "\001\022\023\n\017CONNECTED_USERS\020\002\022\024\n\020USER_INFORMATI"
+    "ON\020\003\022\021\n\rSTATUS_CHANGE\020\004\022\020\n\014SEND_MESSAGE\020"
+    "\005\"\250\003\n\016ServerResponse\022+\n\006option\030\001 \001(\0162\033.c"
     "hat.ServerResponse.Option\022\'\n\004code\030\002 \001(\0162"
     "\031.chat.ServerResponse.Code\022\020\n\010response\030\003"
     " \001(\t\022#\n\005users\030\004 \001(\0132\024.chat.ConnectedUser"
     "s\022#\n\004user\030\005 \001(\0132\025.chat.UserInformation\022\036"
     "\n\007message\030\006 \001(\0132\r.chat.Message\022\"\n\006status"
     "\030\007 \001(\0132\022.chat.ChangeStatus\"h\n\006Option\022\016\n\n"
-    "USER_LOGIN\020\000\022\023\n\017CONNECTED_USERS\020\001\022\024\n\020USE"
-    "R_INFORMATION\020\002\022\021\n\rSTATUS_CHANGE\020\003\022\020\n\014SE"
-    "ND_MESSAGE\020\004\"6\n\004Code\022\024\n\020FAILED_OPERATION"
-    "\020\000\022\030\n\024SUCCESSFUL_OPERATION\020\001", 1068);
+    "USER_LOGIN\020\001\022\023\n\017CONNECTED_USERS\020\002\022\024\n\020USE"
+    "R_INFORMATION\020\003\022\021\n\rSTATUS_CHANGE\020\004\022\020\n\014SE"
+    "ND_MESSAGE\020\005\"6\n\004Code\022\024\n\020FAILED_OPERATION"
+    "\020\001\022\030\n\024SUCCESSFUL_OPERATION\020\002", 1068);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "proyecto.proto", &protobuf_RegisterTypes);
   UserRegistration::default_instance_ = new UserRegistration();
@@ -2113,11 +2113,11 @@ const ::google::protobuf::EnumDescriptor* ClientRequest_Option_descriptor() {
 }
 bool ClientRequest_Option_IsValid(int value) {
   switch(value) {
-    case 0:
     case 1:
     case 2:
     case 3:
     case 4:
+    case 5:
       return true;
     default:
       return false;
@@ -2164,7 +2164,7 @@ ClientRequest::ClientRequest(const ClientRequest& from)
 
 void ClientRequest::SharedCtor() {
   _cached_size_ = 0;
-  option_ = 0;
+  option_ = 1;
   newuser_ = NULL;
   user_ = NULL;
   status_ = NULL;
@@ -2209,7 +2209,7 @@ ClientRequest* ClientRequest::New() const {
 
 void ClientRequest::Clear() {
   if (_has_bits_[0 / 32] & 31) {
-    option_ = 0;
+    option_ = 1;
     if (has_newuser()) {
       if (newuser_ != NULL) newuser_->::chat::UserRegistration::Clear();
     }
@@ -2546,11 +2546,11 @@ const ::google::protobuf::EnumDescriptor* ServerResponse_Option_descriptor() {
 }
 bool ServerResponse_Option_IsValid(int value) {
   switch(value) {
-    case 0:
     case 1:
     case 2:
     case 3:
     case 4:
+    case 5:
       return true;
     default:
       return false;
@@ -2573,8 +2573,8 @@ const ::google::protobuf::EnumDescriptor* ServerResponse_Code_descriptor() {
 }
 bool ServerResponse_Code_IsValid(int value) {
   switch(value) {
-    case 0:
     case 1:
+    case 2:
       return true;
     default:
       return false;
@@ -2621,8 +2621,8 @@ ServerResponse::ServerResponse(const ServerResponse& from)
 void ServerResponse::SharedCtor() {
   ::google::protobuf::internal::GetEmptyString();
   _cached_size_ = 0;
-  option_ = 0;
-  code_ = 0;
+  option_ = 1;
+  code_ = 1;
   response_ = const_cast< ::std::string*>(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   users_ = NULL;
   user_ = NULL;
@@ -2670,18 +2670,9 @@ ServerResponse* ServerResponse::New() const {
 }
 
 void ServerResponse::Clear() {
-#define OFFSET_OF_FIELD_(f) (reinterpret_cast<char*>(      \
-  &reinterpret_cast<ServerResponse*>(16)->f) - \
-   reinterpret_cast<char*>(16))
-
-#define ZR_(first, last) do {                              \
-    size_t f = OFFSET_OF_FIELD_(first);                    \
-    size_t n = OFFSET_OF_FIELD_(last) - f + sizeof(last);  \
-    ::memset(&first, 0, n);                                \
-  } while (0)
-
   if (_has_bits_[0 / 32] & 127) {
-    ZR_(option_, code_);
+    option_ = 1;
+    code_ = 1;
     if (has_response()) {
       if (response_ != &::google::protobuf::internal::GetEmptyStringAlreadyInited()) {
         response_->clear();
@@ -2700,10 +2691,6 @@ void ServerResponse::Clear() {
       if (status_ != NULL) status_->::chat::ChangeStatus::Clear();
     }
   }
-
-#undef OFFSET_OF_FIELD_
-#undef ZR_
-
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }

@@ -44,11 +44,11 @@ class ClientRequest;
 class ServerResponse;
 
 enum ClientRequest_Option {
-  ClientRequest_Option_USER_LOGIN = 0,
-  ClientRequest_Option_CONNECTED_USERS = 1,
-  ClientRequest_Option_USER_INFORMATION = 2,
-  ClientRequest_Option_STATUS_CHANGE = 3,
-  ClientRequest_Option_SEND_MESSAGE = 4
+  ClientRequest_Option_USER_LOGIN = 1,
+  ClientRequest_Option_CONNECTED_USERS = 2,
+  ClientRequest_Option_USER_INFORMATION = 3,
+  ClientRequest_Option_STATUS_CHANGE = 4,
+  ClientRequest_Option_SEND_MESSAGE = 5
 };
 bool ClientRequest_Option_IsValid(int value);
 const ClientRequest_Option ClientRequest_Option_Option_MIN = ClientRequest_Option_USER_LOGIN;
@@ -66,11 +66,11 @@ inline bool ClientRequest_Option_Parse(
     ClientRequest_Option_descriptor(), name, value);
 }
 enum ServerResponse_Option {
-  ServerResponse_Option_USER_LOGIN = 0,
-  ServerResponse_Option_CONNECTED_USERS = 1,
-  ServerResponse_Option_USER_INFORMATION = 2,
-  ServerResponse_Option_STATUS_CHANGE = 3,
-  ServerResponse_Option_SEND_MESSAGE = 4
+  ServerResponse_Option_USER_LOGIN = 1,
+  ServerResponse_Option_CONNECTED_USERS = 2,
+  ServerResponse_Option_USER_INFORMATION = 3,
+  ServerResponse_Option_STATUS_CHANGE = 4,
+  ServerResponse_Option_SEND_MESSAGE = 5
 };
 bool ServerResponse_Option_IsValid(int value);
 const ServerResponse_Option ServerResponse_Option_Option_MIN = ServerResponse_Option_USER_LOGIN;
@@ -88,8 +88,8 @@ inline bool ServerResponse_Option_Parse(
     ServerResponse_Option_descriptor(), name, value);
 }
 enum ServerResponse_Code {
-  ServerResponse_Code_FAILED_OPERATION = 0,
-  ServerResponse_Code_SUCCESSFUL_OPERATION = 1
+  ServerResponse_Code_FAILED_OPERATION = 1,
+  ServerResponse_Code_SUCCESSFUL_OPERATION = 2
 };
 bool ServerResponse_Code_IsValid(int value);
 const ServerResponse_Code ServerResponse_Code_Code_MIN = ServerResponse_Code_FAILED_OPERATION;
@@ -1963,7 +1963,7 @@ inline void ClientRequest::clear_has_option() {
   _has_bits_[0] &= ~0x00000001u;
 }
 inline void ClientRequest::clear_option() {
-  option_ = 0;
+  option_ = 1;
   clear_has_option();
 }
 inline ::chat::ClientRequest_Option ClientRequest::option() const {
@@ -2156,7 +2156,7 @@ inline void ServerResponse::clear_has_option() {
   _has_bits_[0] &= ~0x00000001u;
 }
 inline void ServerResponse::clear_option() {
-  option_ = 0;
+  option_ = 1;
   clear_has_option();
 }
 inline ::chat::ServerResponse_Option ServerResponse::option() const {
@@ -2181,7 +2181,7 @@ inline void ServerResponse::clear_has_code() {
   _has_bits_[0] &= ~0x00000002u;
 }
 inline void ServerResponse::clear_code() {
-  code_ = 0;
+  code_ = 1;
   clear_has_code();
 }
 inline ::chat::ServerResponse_Code ServerResponse::code() const {

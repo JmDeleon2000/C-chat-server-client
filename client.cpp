@@ -57,13 +57,13 @@ int main(int argn, char** argv)
 
     if(inet_pton(AF_INET, argv[2], &serv_addr.sin_addr)<=0)
     {
-        cout << "inet_pton error occured\n";
+        cerr << "inet_pton error occured\n";
         return 1;
     } 
 
     if( connect(socketfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
-        cout << "\n Error : Connect Failed \n";
+        cerr << "\n Error : Connect Failed \n";
         return 1;
     } 
 #endif
@@ -230,28 +230,28 @@ void* client_receiver(void* args)
 #else
                 if (response->code() == ServerResponse_Code_FAILED_OPERATION)
                 {
-                    cout << "Operation: ";
+                    cerr << "Operation: ";
                     switch (response->option())
                     {
                     case ServerResponse_Option_CONNECTED_USERS:
-                        cout << "Get connected users info";
+                        cerr << "Get connected users info";
                         break;
                     case ServerResponse_Option_USER_LOGIN:
-                        cout << "User Login";
+                        cerr << "User Login";
                         break;
                     case ServerResponse_Option_USER_INFORMATION:
-                        cout << "Get user information";
+                        cerr << "Get user information";
                         break;
                     case ServerResponse_Option_STATUS_CHANGE:
-                        cout << "User status change";
+                        cerr << "User status change";
                         break;
                     case ServerResponse_Option_SEND_MESSAGE:
-                        cout << "Send message";
+                        cerr << "Send message";
                         break;
                     default:
                         break;
                     }
-                    cout << " failed!\n";
+                    cerr << " failed!\n";
                 }
                 else
                     switch (response->option())
