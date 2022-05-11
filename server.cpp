@@ -41,23 +41,7 @@ bool user_registration(string username, string IP) {
     user_reg.push_back(user);
 }
 
-void client_connection(string sender_name, string receiver_name, string message) {
-    // conexión del cliente
-    chat::ServerResponse* servRes = new chat::ServerResponse();
-    chat::Message* msg = new chat::Message();
-    
-    for (int i = 0; i < user_reg.size(); i++) {
-        if (user_reg[i].username()== sender_name) {
-            msg->set_sender(sender_name);
-        }
-        else if (user_reg[i].username()== receiver_name) {
-            msg->set_receiver(receiver_name);
-        }
-    }
 
-    msg->set_text(message);
-    servRes->set_option(chat::ServerResponse_Option_SEND_MESSAGE);
-}
 
     // crear su sesión en el servidor y manejarla de forma concurrente a las demás sesiones y a la recepción de nuevas conexiones (ergo, multithreading)
 
@@ -177,6 +161,14 @@ void* user_session(void* args)
     string receive_buffer;
     chat::ClientRequest* request = new chat::ClientRequest();
     chat::ServerResponse* response = new chat::ServerResponse();
+    chat::ConnectedUsers* conn_users = new chat::ConnectedUsers();
+    chat::Message* msg = new chat::Message();
+    chat::UserInformation* userInfo = new chat::UserInformation(); 
+    chat::ChangeStatus* status_change = new chat::ChangeStatus();
+    response->set_allocated_message(msg);
+    response->set_allocated_users(conn_users);
+    response->set_allocated_user(userInfo);
+    response->set_allocated_status(status_change);
     string send_buffer;
 
     //send(socket_list[my_socket], buffer, sizeof(buffer), NULL);
@@ -192,7 +184,6 @@ void* user_session(void* args)
                     {
                         if (user_registration(request->newuser().username(), request->newuser().ip()))
                                 valid_login = true;
-                            
                     }
             }
     }
@@ -206,11 +197,10 @@ void* user_session(void* args)
     send(socket_list[my_socket], send_buffer.c_str(), send_buffer.size()+1, 0);
 
 
-    chat::ConnectedUsers* conn_users = new chat::ConnectedUsers();
     int read_size;
     while (true)
     {
-        read_size = recv(socket_list[my_socket], receive_buffer, sizeof(receive_buffer), 0);
+        read_size = recv(socket_list[my_socket], buffer, sizeof(buffer), 0);
 
         if (read_size == 0)
             {
@@ -218,13 +208,87 @@ void* user_session(void* args)
                 user_reg[my_socket].set_status("INACTIVE");
                 exit(1);
             }
+        
+        receive_buffer = buffer;
+        if (request->ParseFromString(receive_buffer))
+        {
+            bool succesful = false;
+            switch (request->option())
+            {
+            case ClientRequest_Option_CONNECTED_USERS:
+                response->set_option(ServerResponse_Option_CONNECTED_USERS);
+                conn_users->clear_users();
+                for (int i = 0; i < user_reg.size(); i++)
+                    {
+                        chat::UserInformation* this_user_info = conn_users->add_users();
+                        this_user_info->set_username(user_reg[i].username());
+                        this_user_info->set_status(user_reg[i].status());
+                        this_user_info->set_ip(user_reg[i].ip());
+                        succesful = true;
+                    }
+                if (succesful)
+                    response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
+                else
+                    response->set_code(ServerResponse_Code_FAILED_OPERATION);
+                send(my_socket, send_buffer.c_str(), send_buffer.size()+1, 0);
+
+                break;
+            case ClientRequest_Option_USER_INFORMATION:
+                response->set_option(ServerResponse_Option_USER_INFORMATION);
+                for (int i = 0; i < user_reg.size(); i++)
+                    if(user_reg[i].username() == request->user().user())
+                        {
+                            userInfo->set_username(user_reg[i].username());
+                            userInfo->set_ip(user_reg[i].ip());
+                            userInfo->set_status(user_reg[i].status());
+                            succesful = true;
+                        }
+                if (succesful)
+                    response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
+                else
+                    response->set_code(ServerResponse_Code_FAILED_OPERATION);
+                send(my_socket, send_buffer.c_str(), send_buffer.size()+1, 0);
+                break;
+
+            case ClientRequest_Option_STATUS_CHANGE:
+                response->set_option(ServerResponse_Option_STATUS_CHANGE);
+                for (int i = 0; i < user_reg.size(); i++)
+                    if(user_reg[i].username() == request->status().username())
+                        {
+                            user_reg[i].set_status(request->status().status());
+                            succesful = true;
+                        }
+                if (succesful)
+                    response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
+                else
+                    response->set_code(ServerResponse_Code_FAILED_OPERATION);
+                send(my_socket, send_buffer.c_str(), send_buffer.size()+1, 0);
+                
+                break;
+            case ClientRequest_Option_SEND_MESSAGE:
+                msg->set_sender(request->message().sender());
+                msg->set_receiver(request->message().receiver());
+                msg->set_text(request->message().text());
+                response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
+                response->set_option(ServerResponse_Option_SEND_MESSAGE);
+                if (request->message().receiver() == "all")
+                    for (int i = 0; i < user_reg.size(); i++)
+                        if(user_reg[i].status() == "ACTIVE")
+                            send(socket_list[i], send_buffer.c_str(), send_buffer.size()+1, 0);
+                else
+                    for (int i = 0; i < user_reg.size(); i++)
+                        if(user_reg[i].status() == "ACTIVE" && user_reg[i].username() == request->message().receiver())
+                            send(socket_list[i], send_buffer.c_str(), send_buffer.size()+1, 0);
+                break;
+            default:
+                break;
+            }
+        }
 
         // ver si el el username está activo
-        // verificar el timeout del usuario. Si se pasa, ponerlo inactivo
-        //conn_users->set_users(user_reg);
-        //conn_users->add_users(user_reg);
+        // TODO verificar el timeout del usuario. Si se pasa, ponerlo inactivo
 
-        response->set_allocated_users(conn_users);
+        
     }
     
 }

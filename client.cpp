@@ -193,7 +193,7 @@ void* client_sender(void* args)
 #if debug
             cout << send_buffer[0] << endl;
 #else
-            send(socketfd, send_buffer[0].c_str(), send_buffer[0].size(), 0);
+            send(socketfd, send_buffer[0].c_str(), send_buffer[0].size()+1, 0);
 #endif
             pthread_mutex_lock(&send_queue_mutex);
             send_buffer.erase(send_buffer.begin());
