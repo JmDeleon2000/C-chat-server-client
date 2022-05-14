@@ -157,7 +157,7 @@ int main(int argn, char** argv)
                     pthread_mutex_lock(&global_mutex);
                     if(user_registration(login_request->newuser().username(), login_request->newuser().ip()))
                     {
-                        cout << "valid login\t" << fd << "\n";
+                        cout << "valid login" << "\n";
                         socket_list.push_back(fd);
                         last_user_valid_request.push_back(0);
                         has_timedout.push_back(false);
@@ -208,8 +208,6 @@ void* user_session(void* args)
     response->set_allocated_user(userInfo);
     response->set_allocated_status(status_change);
     string send_buffer;
-
-    cout << "Thread created!" << "\n";
 
     response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
 
@@ -265,10 +263,7 @@ void* user_session(void* args)
                     response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
                 else
                     response->set_code(ServerResponse_Code_FAILED_OPERATION);
-                cout << "sending users\n";
                 send_buffer = response->SerializeAsString();
-                cout << response->DebugString() << "\n";
-                cout << socket_list[user_index] << "\n";
                 send(socket_list[user_index], send_buffer.c_str(), send_buffer.size(), 0);
 
                 break;
@@ -287,8 +282,6 @@ void* user_session(void* args)
                 else
                     response->set_code(ServerResponse_Code_FAILED_OPERATION);
                 send_buffer = response->SerializeAsString();
-                cout << response->DebugString() << "\n";
-                cout << socket_list[user_index] << "\n";
                 send(socket_list[user_index], send_buffer.c_str(), send_buffer.size(), 0);
                 break;
 
@@ -319,8 +312,10 @@ void* user_session(void* args)
                 send_buffer = response->SerializeAsString();
                 if (request->message().receiver() == "all")
                     for (int i = 0; i < user_reg.size(); i++)
+                    {
                         if(user_reg[i].status() == "ACTIVE"/* && user_reg[i].username() != request->message().sender()*/)
                             send(socket_list[i], send_buffer.c_str(), send_buffer.size(), 0);
+                    }
                 else
                     for (int i = 0; i < user_reg.size(); i++)
                         if(user_reg[i].status() == "ACTIVE" && user_reg[i].username() == request->message().receiver())

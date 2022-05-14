@@ -290,18 +290,18 @@ void* client_receiver(void* args)
         for(int i = 0; i < n; i++)
             response_buffer += read_buffer[i];
         
-        //if (n > 0)
-        //{
-        //    cout << "server disconnected" << endl;
-        //    not_out = false;
-        //}
+        if (n == 0)
+        {
+            cout << "server disconnected" << endl;
+            not_out = false;
+            break;
+        }
         if (response->ParseFromString(response_buffer))
         {
 
 #if debug
             //cout << response->DebugString() << "\n";
 #else
-            cout << response->DebugString() << "\n";
             if (response->code() == ServerResponse_Code_FAILED_OPERATION)
             {
                 cerr << "Operation: ";
@@ -348,7 +348,7 @@ void* client_receiver(void* args)
                 case ServerResponse_Option_SEND_MESSAGE:
                     if (response->has_message() && response->message().has_sender() && response->message().has_text())
                     {  
-                        cout << "Message from: " << response->message().sender() << ":\n";
+                        cout << "Message from " << response->message().sender() << ":\n";
                         cout << response->message().text() << "\n";
                     }
                     else if (response->has_message() && response->message().has_text())
