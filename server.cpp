@@ -33,7 +33,7 @@ bool available_user = true;
 
 
 bool user_registration(string username, string IP) {
-
+    cout << username << "\t" << IP << endl;
     if (username == "all")
         return false;
     for (int i = 0; i < user_reg.size(); i++) 
@@ -44,6 +44,7 @@ bool user_registration(string username, string IP) {
     user.set_status("ACTIVE");
     user.set_username(username);
     user_reg.push_back(user);
+    return true;
 }
 
 
@@ -126,22 +127,52 @@ int main(int argn, char** argv)
     pthread_t timeout_manager_thread;
     if(pthread_create(&timeout_manager_thread, NULL, timeout_manager, (void*)NULL) == -1)
             return -1;
+    
     pthread_t sessions[20];
     int session_count = 0;
     thread_args arguments;
+    int read_count;
+    char init_buff[512];
+    string login_handshake = "";
+    chat::ClientRequest* login_request = new chat::ClientRequest();
+    chat::ServerResponse response;
+    response.set_option(ServerResponse_Option_USER_LOGIN);
+    response.set_code(ServerResponse_Code_FAILED_OPERATION);
+    string bad_login_msg = response.SerializeAsString();
+
     while (true)
     {
         cout << "waiting for client...\n";
         int fd = accept(listener, (struct sockaddr*)NULL, NULL);
-        pthread_mutex_lock(&global_mutex);
-        socket_list.push_back(fd);
-        last_user_valid_request.push_back(0);
-        has_timedout.push_back(false);
-        pthread_mutex_unlock(&global_mutex);
-        arguments.socket_id = session_count;
-        if(pthread_create(&sessions[session_count], NULL, user_session, (void*)&arguments) == -1)
-            return -1;
-        session_count++;
+        memset(init_buff, 0, sizeof(init_buff));
+
+        //while (/*read_count = recv(fd, init_buff, sizeof(init_buff), 0)*/)
+        //{
+            read_count = recv(fd, init_buff, sizeof(init_buff), 0);
+            for (int i = 0; i < read_count; i++)
+                login_handshake += init_buff[i];
+            
+            if (login_request->ParseFromString(login_handshake))
+                {
+                    pthread_mutex_lock(&global_mutex);
+                    if(user_registration(login_request->newuser().username(), login_request->newuser().ip()))
+                    {
+                        cout << "valid login\t" << fd << "\n";
+                        socket_list.push_back(fd);
+                        last_user_valid_request.push_back(0);
+                        has_timedout.push_back(false);
+                        arguments.socket_id = session_count;
+                        
+                        if(pthread_create(&sessions[session_count], NULL, user_session, (void*)&arguments) == -1)
+                            return -1;
+                        session_count++;
+                    }
+                    else
+                        send(fd, bad_login_msg.c_str(), bad_login_msg.size(), 0);
+                        
+                    pthread_mutex_unlock(&global_mutex);
+                }
+        //}
         sleep(1);
     }
     
@@ -163,7 +194,7 @@ int main(int argn, char** argv)
 
 void* user_session(void* args)
 {
-    int my_socket = ((thread_args*)args)->socket_id;
+    int user_index = ((thread_args*)args)->socket_id;
     char buffer[1024];
     string receive_buffer;
     chat::ClientRequest* request = new chat::ClientRequest();
@@ -178,60 +209,47 @@ void* user_session(void* args)
     response->set_allocated_status(status_change);
     string send_buffer;
 
-    //send(socket_list[my_socket], buffer, sizeof(buffer), NULL);
+    cout << "Thread created!" << "\n";
 
-    //suponiendo que recv funciona:
+    response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
 
-    bool valid_login = false;
-    if (request->ParseFromString(receive_buffer))
-    {
-        if (request->option() == ClientRequest_Option_USER_LOGIN)
-            {
-                if(request->has_newuser() && request->newuser().has_username() && request->newuser().has_ip())
-                    {
-                        if (user_registration(request->newuser().username(), request->newuser().ip()))
-                                valid_login = true;
-                    }
-            }
-    }
-    if (valid_login)
-        response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
-    else
-        response->set_code(ServerResponse_Code_FAILED_OPERATION);
 
     response->set_option(ServerResponse_Option_USER_LOGIN);
-    response->SerializeToString(&send_buffer);
-    send(socket_list[my_socket], send_buffer.c_str(), send_buffer.size()+1, 0);
-
-
+    send_buffer = response->SerializeAsString();
+    send(socket_list[user_index], send_buffer.c_str(), send_buffer.size(), 0);
+    cout << "sent login confirmation\n";
+    bool succesful;
     int read_size;
     while (true)
     {
-        read_size = recv(socket_list[my_socket], buffer, sizeof(buffer), 0);
+        read_size = recv(socket_list[user_index], buffer, sizeof(buffer), 0);
 
         if (read_size == 0)
             {
-                cout << "Client: " << user_reg[my_socket].username() << " disconnected\n";
+                cout << "Client: " << user_reg[user_index].username() << " disconnected\n";
                 pthread_mutex_lock(&global_mutex);
-                user_reg[my_socket].set_status("INACTIVE");
+                user_reg[user_index].set_status("INACTIVE");
                 pthread_mutex_unlock(&global_mutex);
-                exit(1);
+                break;
             }
-        
-        receive_buffer += buffer;
+        for(int i = 0; i < read_size; i++)
+            receive_buffer += buffer[i];
         if (request->ParseFromString(receive_buffer))
         {
+            cout << "Valid request from: " << user_reg[user_index].username() << endl;
             pthread_mutex_lock(&global_mutex);
-            last_user_valid_request[my_socket] = clock();
-            if (has_timedout[my_socket])
+            last_user_valid_request[user_index] = clock();
+            if (has_timedout[user_index])
                 {
-                    user_reg[my_socket].set_status("INACTIVE");
+                    cout << user_reg[user_index].username() << " timed out!\n";
+                    user_reg[user_index].set_status("INACTIVE");
                     exit(1);
                 }
             pthread_mutex_unlock(&global_mutex);
-            bool succesful = false;
+            succesful = false;
             switch (request->option())
             {
+            
             case ClientRequest_Option_CONNECTED_USERS:
                 response->set_option(ServerResponse_Option_CONNECTED_USERS);
                 conn_users->clear_users();
@@ -247,7 +265,11 @@ void* user_session(void* args)
                     response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
                 else
                     response->set_code(ServerResponse_Code_FAILED_OPERATION);
-                send(my_socket, send_buffer.c_str(), send_buffer.size()+1, 0);
+                cout << "sending users\n";
+                send_buffer = response->SerializeAsString();
+                cout << response->DebugString() << "\n";
+                cout << socket_list[user_index] << "\n";
+                send(socket_list[user_index], send_buffer.c_str(), send_buffer.size(), 0);
 
                 break;
             case ClientRequest_Option_USER_INFORMATION:
@@ -264,7 +286,10 @@ void* user_session(void* args)
                     response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
                 else
                     response->set_code(ServerResponse_Code_FAILED_OPERATION);
-                send(my_socket, send_buffer.c_str(), send_buffer.size()+1, 0);
+                send_buffer = response->SerializeAsString();
+                cout << response->DebugString() << "\n";
+                cout << socket_list[user_index] << "\n";
+                send(socket_list[user_index], send_buffer.c_str(), send_buffer.size(), 0);
                 break;
 
             case ClientRequest_Option_STATUS_CHANGE:
@@ -281,7 +306,8 @@ void* user_session(void* args)
                     response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
                 else
                     response->set_code(ServerResponse_Code_FAILED_OPERATION);
-                send(my_socket, send_buffer.c_str(), send_buffer.size()+1, 0);
+                send_buffer = response->SerializeAsString();
+                send(socket_list[user_index], send_buffer.c_str(), send_buffer.size(), 0);
                 
                 break;
             case ClientRequest_Option_SEND_MESSAGE:
@@ -290,20 +316,26 @@ void* user_session(void* args)
                 msg->set_text(request->message().text());
                 response->set_code(ServerResponse_Code_SUCCESSFUL_OPERATION);
                 response->set_option(ServerResponse_Option_SEND_MESSAGE);
+                send_buffer = response->SerializeAsString();
                 if (request->message().receiver() == "all")
                     for (int i = 0; i < user_reg.size(); i++)
-                        if(user_reg[i].status() == "ACTIVE")
-                            send(socket_list[i], send_buffer.c_str(), send_buffer.size()+1, 0);
+                        if(user_reg[i].status() == "ACTIVE"/* && user_reg[i].username() != request->message().sender()*/)
+                            send(socket_list[i], send_buffer.c_str(), send_buffer.size(), 0);
                 else
                     for (int i = 0; i < user_reg.size(); i++)
                         if(user_reg[i].status() == "ACTIVE" && user_reg[i].username() == request->message().receiver())
-                            send(socket_list[i], send_buffer.c_str(), send_buffer.size()+1, 0);
+                        {
+                            send(socket_list[i], send_buffer.c_str(), send_buffer.size(), 0);
+                            break;
+                        }
                 break;
             default:
                 break;
             }
             receive_buffer.clear();
         }
+        else
+            cout <<receive_buffer << "\n";
         
     }
     

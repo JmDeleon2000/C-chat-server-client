@@ -118,10 +118,12 @@ int main(int argn, char** argv)
     chat::ChangeStatus* change = new chat::ChangeStatus();
     chat::UserRequest* userInfoReq = new chat::UserRequest();
     chat::UserRegistration* reg = new chat::UserRegistration();
-    msg->set_sender(username);
+    
+    string my_ip = "192.168.1.16";
     reg->set_username(username);
-    reg->set_ip("dummy ip"); //TODO get my ip
+    reg->set_ip(my_ip); //TODO get my ip
     req->set_option(ClientRequest_Option_USER_LOGIN);
+
     req->set_allocated_newuser(reg);
     req->set_allocated_message(msg);
     req->set_allocated_user(userInfoReq);
@@ -144,22 +146,31 @@ int main(int argn, char** argv)
     {
         
         getline(cin, input);
-        command = input.substr(0, 3);
-        input.erase(0, 4);
-        second_arg = input.substr(0, input.find(' '));
-        third_arg = input;
-        third_arg.erase(0, third_arg.find(' ')+1);
+        //cout << input << "\n";
+        if (input.size() > 3)
+        {
+            command = input.substr(0, 3);
+            input.erase(0, 4);
+            second_arg = input.substr(0, input.find(' '));
+            third_arg = input;
+            third_arg.erase(0, third_arg.find(' ')+1);
+#if debug
+            cout << command << "\t" << second_arg << "\t" << third_arg << "\t" << input << "\n";
+#endif
+        }
+        else command = input;
+        
 
+
+        bool valid_op = false;
 
         if (command == "--q" || command == "--Q")
             not_out = false;
         
         if (not_out && input.size() > 0)
         {
-            bool valid_op = false;
             if (command == "--h" || command == "--H")
             {
-                valid_op = true;
                 cout << "Quit: --q or --Q\n";
                 cout << "Direct Message: --M <user> <message> or --m <user> <message>\n";
                 cout << "Broadcast: --b <message>\n";
@@ -185,6 +196,7 @@ int main(int argn, char** argv)
                 valid_op = true;
                 cout << "*** CHANGING STATUS TO " << second_arg <<" ***\n";
                 change->set_status(second_arg);
+                change->set_username(username);
                 req->set_option(ClientRequest_Option_STATUS_CHANGE);
             }
             if (command == "--m" || command == "--M")
@@ -193,6 +205,7 @@ int main(int argn, char** argv)
                 cout << "*** SENDING PRIVATE MESSAGE TO " << second_arg <<" ***\n";
                 msg->set_receiver(second_arg);
                 msg->set_text(third_arg);
+                msg->set_sender(username);
                 req->set_option(ClientRequest_Option_SEND_MESSAGE);
             }
             if (command == "--b" || command == "--B")
@@ -200,11 +213,9 @@ int main(int argn, char** argv)
                 valid_op = true;
                 msg->set_receiver("all");
                 msg->set_text(input);
+                msg->set_sender(username);
                 req->set_option(ClientRequest_Option_SEND_MESSAGE);
             }
-            input.clear();
-            second_arg.clear();
-            third_arg.clear();
             if (valid_op)
             {
                 pthread_mutex_lock(&send_queue_mutex);
@@ -214,9 +225,22 @@ int main(int argn, char** argv)
                 send_buffer.push_back(req->SerializeAsString());
 #endif
                 pthread_mutex_unlock(&send_queue_mutex);
+                req->Clear();
+                msg = new chat::Message();
+                change = new chat::ChangeStatus();
+                userInfoReq = new chat::UserRequest();
+                reg = new chat::UserRegistration();
+                req->set_allocated_newuser(reg);
+                req->set_allocated_message(msg);
+                req->set_allocated_user(userInfoReq);
+                req->set_allocated_status(change);
             }
             else 
-                cout << "Invalid operation\nUse --h for help\n";
+                if (command != "--h" || command != "--H")
+                    cout << "Invalid operation\nUse --h for help\n";
+            input.clear();
+            second_arg.clear();
+            third_arg.clear();
         }
     }
     
@@ -237,7 +261,7 @@ void* client_sender(void* args)
 #if debug
             cout << send_buffer[0] << endl;
 #else
-            send(socketfd, send_buffer[0].c_str(), send_buffer[0].size()+1, 0);
+            send(socketfd, send_buffer[0].c_str(), send_buffer[0].size(), 0);
 #endif
             pthread_mutex_lock(&send_queue_mutex);
             send_buffer.erase(send_buffer.begin());
@@ -250,14 +274,9 @@ void* client_sender(void* args)
 
 void* client_receiver(void* args)
 {
+    sleep(4);
     int n = 0;
     chat::ServerResponse* response = new chat::ServerResponse();
-    chat::Message* msg = new chat::Message();
-    msg->set_sender("sender test");
-    msg->set_receiver("reciever test");
-    msg->set_text("test text: lorem ipsum");
-    response->set_option(ServerResponse_Option_SEND_MESSAGE);
-    response->set_allocated_message(msg);
     
     string response_buffer = "";
 
@@ -271,16 +290,18 @@ void* client_receiver(void* args)
         for(int i = 0; i < n; i++)
             response_buffer += read_buffer[i];
         
-        if (n > 0)
-        {
-            cout << "server disconnected" << endl;
-            not_out = false;
-        }
+        //if (n > 0)
+        //{
+        //    cout << "server disconnected" << endl;
+        //    not_out = false;
+        //}
         if (response->ParseFromString(response_buffer))
         {
+
 #if debug
-            cout << response->DebugString() << "\n";
+            //cout << response->DebugString() << "\n";
 #else
+            cout << response->DebugString() << "\n";
             if (response->code() == ServerResponse_Code_FAILED_OPERATION)
             {
                 cerr << "Operation: ";
@@ -305,6 +326,7 @@ void* client_receiver(void* args)
                     break;
                 }
                 cerr << " failed!\n";
+                not_out = false;
             }
             else
                 switch (response->option())
@@ -324,13 +346,12 @@ void* client_receiver(void* args)
                     cout << "User status change succesful\n";
                     break;
                 case ServerResponse_Option_SEND_MESSAGE:
-                    cout << "Message sent";
                     if (response->has_message() && response->message().has_sender() && response->message().has_text())
                     {  
-                        cout << "Message from: " << response->message().has_sender() << ":\n";
+                        cout << "Message from: " << response->message().sender() << ":\n";
                         cout << response->message().text() << "\n";
                     }
-                    if (response->has_message() && response->message().has_text())
+                    else if (response->has_message() && response->message().has_text())
                     {  
                         cout << "Message :\n";
                         cout << response->message().text() << "\n";
@@ -341,9 +362,10 @@ void* client_receiver(void* args)
                 }
 #endif
             response_buffer.clear();
+            response->Clear();
         }
         
-        sleep(1);
+        //sleep(1);
     }
     
 }
