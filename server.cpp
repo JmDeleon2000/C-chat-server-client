@@ -313,7 +313,7 @@ void* user_session(void* args)
                 if (request->message().receiver() == "all")
                     for (int i = 0; i < user_reg.size(); i++)
                     {
-                        if(user_reg[i].status() == "ACTIVE"/* && user_reg[i].username() != request->message().sender()*/)
+                        if(user_reg[i].status() == "ACTIVE" && user_reg[i].username() != request->message().sender())
                             send(socket_list[i], send_buffer.c_str(), send_buffer.size(), 0);
                     }
                 else

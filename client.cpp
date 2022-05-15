@@ -246,6 +246,7 @@ int main(int argn, char** argv)
     
     
     pthread_join(sender_thread, NULL);
+    pthread_cancel(receiver_thread);
     pthread_join(receiver_thread, NULL);
     cout << "Bye!\n";
     return 0;
@@ -312,6 +313,7 @@ void* client_receiver(void* args)
                     break;
                 case ServerResponse_Option_USER_LOGIN:
                     cerr << "User Login";
+                    not_out = false;
                     break;
                 case ServerResponse_Option_USER_INFORMATION:
                     cerr << "Get user information";
@@ -326,7 +328,7 @@ void* client_receiver(void* args)
                     break;
                 }
                 cerr << " failed!\n";
-                not_out = false;
+
             }
             else
                 switch (response->option())
